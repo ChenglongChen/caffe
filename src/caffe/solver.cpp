@@ -11,6 +11,7 @@
 #include "caffe/solver.hpp"
 #include "caffe/util/io.hpp"
 #include "caffe/util/math_functions.hpp"
+#include "caffe/info.hpp"
 
 using std::max;
 using std::min;
@@ -63,6 +64,11 @@ void Solver<Dtype>::Solve(const char* resume_file) {
 
     if (param_.display() && iter_ % param_.display() == 0) {
       LOG(INFO) << "Iteration " << iter_ << ", loss = " << loss;
+      // Print other info specified in the solver parameter
+      for (int i = 0; i < param_.info_size(); ++i) {
+	shared_ptr<Info<Dtype> > info(GetInfo<Dtype>(param_.info(i)));
+	info->Print(*net_.get());
+      }
     }
     if (param_.test_interval() && iter_ % param_.test_interval() == 0) {
       // We need to set phase to test before running.
