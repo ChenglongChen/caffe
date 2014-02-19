@@ -9,12 +9,17 @@
 
 #include <mkl.h>
 #include <string>
+#include <iostream>
+#include <fstream>
+#include <string>
 
 #include "caffe/common.hpp"
 #include "caffe/blob.hpp"
 #include "caffe/syncedmem.hpp"
 #include "caffe/util/math_functions.hpp"
 #include "caffe/proto/caffe.pb.h"
+#include "caffe/util/io.hpp"
+#include "caffe/net.hpp"
 
 namespace caffe {
 
@@ -120,6 +125,62 @@ class XavierFiller : public Filler<Dtype> {
 };
 
 
+template <typename Dtype>
+class FromFileFiller : public Filler<Dtype> {
+  public:
+    explicit FromFileFiller(const FillerParameter& param)
+        : Filler<Dtype>(param) {}
+    virtual void Fill(Blob<Dtype>* blob) {
+      const string trained_filename = this->filler_param_.snapshot();
+      const string source_layer_name = this->filler_param_.layer();
+      const int index = this->filler_param_.source_index();
+      CHECK_GE(index, 0) << "The source index should be greater than or equal to 0";
+      CHECK(blob->count());
+
+      // Load the parameter from the snapshot.
+      bool loaded = false;
+      NetParameter net_param;
+      ReadProtoFromBinaryFile(trained_filename, &net_param);
+      int num_source_layers = net_param.layers_size();
+      for (int i = 0; i < num_source_layers; ++i) {
+	const LayerParameter& source_layer = net_param.layers(i).layer();
+	const string& source_layer_name_ = source_layer.name();
+	if (source_layer_name_.compare(source_layer_name) == 0) {
+	  int num_blobs = source_layer.blobs_size();
+	  CHECK_LT(index, num_blobs) << "The source index " << index
+				     << " is too big, as the layer " << source_layer_name
+				     << " has only " << num_blobs << " blobs.";
+	  // Check Compatibility
+	  CHECK_EQ(blob->num(), source_layer.blobs(index).num());
+	  CHECK_EQ(blob->channels(), source_layer.blobs(index).channels());
+	  CHECK_EQ(blob->height(), source_layer.blobs(index).height());
+	  CHECK_EQ(blob->width(), source_layer.blobs(index).width());
+	  blob->FromProto(source_layer.blobs(index));
+	  loaded = true;
+	}
+      }
+      CHECK(loaded) << "Failed loading from snapsnot: " << trained_filename
+		    << ". No layer has the name " << source_layer_name;
+    }
+};
+
+template <typename Dtype>
+class FromBinaryFiller : public Filler<Dtype> {
+  public:
+    explicit FromBinaryFiller(const FillerParameter& param)
+        : Filler<Dtype>(param) {}
+    virtual void Fill(Blob<Dtype>* blob) {
+      const string binary_file_name = this->filler_param_.binary();
+      CHECK(blob->count());
+      std::ifstream binary_file(binary_file_name.c_str(), 
+				std::ios::in | std::ios::binary);
+      binary_file.read((char*)(blob->mutable_cpu_data()),
+		       blob->num() * blob->channels() * blob->height()
+		       * blob->width() * sizeof(Dtype));
+      binary_file.close();
+    }
+};
+
 // A function to get a specific filler from the specification given in
 // FillerParameter. Ideally this would be replaced by a factory pattern,
 // but we will leave it this way for now.
@@ -136,6 +197,10 @@ Filler<Dtype>* GetFiller(const FillerParameter& param) {
     return new UniformFiller<Dtype>(param);
   } else if (type == "xavier") {
     return new XavierFiller<Dtype>(param);
+  } else if (type == "from_binary") {
+    return new FromBinaryFiller<Dtype>(param);
+  } else if (type == "from_file") {
+    return new FromFileFiller<Dtype>(param);
   } else {
     CHECK(false) << "Unknown filler name: " << param.type();
   }
