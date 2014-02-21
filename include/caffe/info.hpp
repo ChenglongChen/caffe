@@ -72,16 +72,22 @@ class BlobRelatedInfo : public Info<Dtype> {
       Dtype data_min = 0;
       Dtype diff_max = 0;
       Dtype diff_min = 0;
+      Dtype data_mean = 0;
+      Dtype diff_mean = 0;
       for (int i = 0; i < blob.count(); ++i) {
+	data_mean += blob_cpu_data[i];
 	data_max = (blob_cpu_data[i] > data_max) ? blob_cpu_data[i] : data_max;
 	data_min = (blob_cpu_data[i] < data_min) ? blob_cpu_data[i] : data_min;
+	diff_mean += blob_cpu_diff[i];
 	diff_max = (blob_cpu_diff[i] > diff_max) ? blob_cpu_diff[i] : diff_max;
 	diff_min = (blob_cpu_diff[i] < diff_min) ? blob_cpu_diff[i] : diff_min;
       }
+      data_mean /= blob.count();
+      diff_mean /= blob.count();
       LOG(INFO) << std::left << std::setw(max_len + 1) << std::setfill(' ')
 		<< net.blob_names()[l] << std::scientific
-		<< " data: (" << data_max << ", " << data_min << ") "
-		<< "diff: (" << diff_max << ", " << diff_min << ")";
+		<< " data: (" << data_max << ", " << data_mean << ", " << data_min << ") "
+		<< "diff: (" << diff_max << ", " << diff_mean << ", " << diff_min << ")";
     }
   }
   virtual ~BlobRelatedInfo() {}
