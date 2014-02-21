@@ -111,12 +111,36 @@ class BlobRelatedInfo : public Info<Dtype> {
 };
 
 template <typename Dtype>
+class MeanTrainLossInfo : public Info<Dtype> {
+ public:
+  explicit MeanTrainLossInfo(const InfoParameter& info_param,
+                             shared_ptr<Net<Dtype> > net) : Info<Dtype>(info_param, net), loss_sum_(0.), iter_num_(0) {}
+  virtual void Iter(Dtype loss, int iter) {
+    loss_sum_ += loss;
+    iter_num_ ++;
+    if (iter % this->interval_ == 0) {
+      print(loss, iter);
+      loss_sum_ = 0.;
+      iter_num_ = 0;
+    }
+  }
+  virtual void print(Dtype loss, int iter) {
+    LOG(INFO) << "Iter: " << iter << ", loss = " << loss_sum_ / iter_num_;
+  }
+  virtual ~MeanTrainLossInfo() {}
+ protected:
+  Dtype loss_sum_;
+  int iter_num_;
+};
+
 template <typename Dtype>
 Info<Dtype>* GetInfo(const InfoParameter& info_param, shared_ptr<Net<Dtype> > net) {
   if (info_param.type() == "weight") {
     return new WeightRelatedInfo<Dtype>(info_param, net);
   } else if (info_param.type() == "blob") {
     return new BlobRelatedInfo<Dtype>(info_param, net);
+  } else if (info_param.type() == "mean_train_loss") {
+    return new MeanTrainLossInfo<Dtype>(info_param, net);
   } else {
     CHECK(false) << "Unknown info type: " << info_param.type();
   }
