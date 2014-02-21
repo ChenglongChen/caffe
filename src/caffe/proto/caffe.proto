@@ -141,7 +141,7 @@ message SolverParameter {
   optional int32 solver_mode = 17 [default = 1];
   // the device_id will that be used in GPU mode. Use device_id=0 in default.
   optional int32 device_id = 18 [default = 0];
-  repeated string info = 19; // The infomation printer to print information of the net
+  repeated InfoParameter info = 19; // The infomation printer to print information of the net
 }
 
 // A message that stores the solver snapshots
@@ -149,4 +149,9 @@ message SolverState {
   optional int32 iter = 1; // The current iteration
   optional string learned_net = 2; // The file that stores the learned net.
   repeated BlobProto history = 3; // The history for sgd solvers
+}
+
+message InfoParameter {
+  optional string type = 1; // the type of the info
+  optional int32 interval = 2; // how long it is notified once
 }

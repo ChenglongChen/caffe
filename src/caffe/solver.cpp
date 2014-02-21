@@ -11,7 +11,6 @@
 #include "caffe/solver.hpp"
 #include "caffe/util/io.hpp"
 #include "caffe/util/math_functions.hpp"
-#include "caffe/info.hpp"
 
 using std::max;
 using std::min;
@@ -33,6 +32,10 @@ Solver<Dtype>::Solver(const SolverParameter& param)
     test_net_.reset(new Net<Dtype>(test_net_param));
     CHECK_GT(param_.test_iter(), 0);
     CHECK_GT(param_.test_interval(), 0);
+  }
+  LOG(INFO) << "Installing info monitor.";
+  for (int i = 0; i < param_.info_size(); ++i) {
+    info_.push_back(shared_ptr<Info<Dtype> >(GetInfo<Dtype>(param_.info(i), net_)));
   }
   LOG(INFO) << "Solver scaffolding done.";
 }
@@ -62,14 +65,17 @@ void Solver<Dtype>::Solve(const char* resume_file) {
     ComputeUpdateValue();
     net_->Update();
 
-    if (param_.display() && iter_ % param_.display() == 0) {
-      LOG(INFO) << "Iteration " << iter_ << ", loss = " << loss;
-      // Print other info specified in the solver parameter
-      for (int i = 0; i < param_.info_size(); ++i) {
-	shared_ptr<Info<Dtype> > info(GetInfo<Dtype>(param_.info(i)));
-	info->Print(*net_.get());
-      }
+    // Notify the info monitors by its interval
+    for (int i = 0; i < info_.size(); ++i) {
+      info_[i].get()->Iter(loss, iter_);
     }
+
+    // Display
+    // if (param_.display() && iter_ % param_.display() == 0) {
+    // Handle the loss printing to info monitor installed.
+    // LOG(INFO) << "Iteration " << iter_ << ", loss = " << loss;
+    //}
+
     if (param_.test_interval() && iter_ % param_.test_interval() == 0) {
       // We need to set phase to test before running.
       Caffe::set_phase(Caffe::TEST);
