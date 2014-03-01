@@ -30,7 +30,7 @@ void DropoutLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
   const Dtype* bottom_data = bottom[0]->gpu_data();
   Dtype* top_data = (*top)[0]->mutable_gpu_data();
   const int count = bottom[0]->count();
-  if (Caffe::phase() == Caffe::TRAIN) {
+  if ((!mean_on_train_ && Caffe::phase() == Caffe::TRAIN) || !mean_on_test_) {
     CURAND_CHECK(curandGenerate(Caffe::curand_generator(),
         (unsigned int*)(rand_vec_->mutable_gpu_data()), count));
     // set thresholds

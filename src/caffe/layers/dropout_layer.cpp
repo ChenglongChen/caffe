@@ -18,6 +18,8 @@ void DropoutLayer<Dtype>::SetUp(const vector<Blob<Dtype>*>& bottom,
   DCHECK(threshold_ < 1.);
   scale_ = 1. / (1. - threshold_);
   uint_thres_ = (unsigned int)(UINT_MAX * threshold_);
+  mean_on_test_ = this->layer_param_.mean_on_test();
+  mean_on_train_ = this->layer_param_.mean_on_train();
 }
 
 template <typename Dtype>
@@ -27,7 +29,7 @@ void DropoutLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
   Dtype* top_data = (*top)[0]->mutable_cpu_data();
   int* mask = reinterpret_cast<int*>(rand_vec_->mutable_cpu_data());
   const int count = bottom[0]->count();
-  if (Caffe::phase() == Caffe::TRAIN) {
+  if ((!mean_on_train_ && Caffe::phase() == Caffe::TRAIN) || !mean_on_test_) {
     // Create random numbers
     viRngBernoulli(VSL_RNG_METHOD_BERNOULLI_ICDF, Caffe::vsl_stream(),
         count, mask, 1. - threshold_);
