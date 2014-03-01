@@ -7,6 +7,34 @@
 
 namespace caffe {
 
+template <>
+const shared_ptr<SyncedMemory> ones<float>(const int len) {
+  static shared_ptr<SyncedMemory> ones_vec;
+  if (len > ones_vec.size()) {
+    ones_vec.reset(new SyncedMemory(len * sizeof(float)));
+    float* ones_vec_data =
+      reinterpret_cast<float*>(ones_vec.mutable_cpu_data());
+    for (int i = 0; i < len; ++i) {
+      ones_vec_data[i] = 1.;
+    }
+  }
+  return ones_vec;
+}
+
+template <>
+const shared_ptr<SyncedMemory> ones<double>(const int len) {
+  static shared_ptr<SyncedMemory> ones_vec;
+  if (len > ones_vec.size()) {
+    ones_vec.reset(new SyncedMemory(len * sizeof(double)));
+    double* ones_vec_data =
+      reinterpret_cast<double*>(ones_vec.mutable_cpu_data());
+    for (int i = 0; i < len; ++i) {
+      ones_vec_data[i] = 1.;
+    }
+  }
+  return ones_vec;
+}
+
 template<>
 void caffe_cpu_gemm<float>(const CBLAS_TRANSPOSE TransA,
     const CBLAS_TRANSPOSE TransB, const int M, const int N, const int K,
@@ -291,6 +319,75 @@ template <>
 void caffe_gpu_dot<double>(const int n, const double* x, const double* y,
     double * out) {
   CUBLAS_CHECK(cublasDdot(Caffe::cublas_handle(), n, x, 1, y, 1, out));
+}
+
+// alpha column sum plus beta y
+template <typename Dtype>
+void caffe_cpu_acolsumpby(const CBLAS_TRANSPOSE Trans, const int h,
+			  const int w, const Dtype a, const Dtype* X,
+			  const Dtype b, Dtype* y) {
+  Dtype* ones_data = reinterpret_cast<Dtype>(ones<Dtype>(w).cpu_data());
+  caffe_cpu_gemv<Dtype>(Trans, h, w, a, X, ones_data, b, y);
+}
+
+template <typename Dtype>
+void caffe_gpu_acolsumpby(const CBLAS_TRANSPOSE Trans, const int h,
+			  const int w, const Dtype a, const Dtype* X,
+			  const Dtype b, Dtype* y) {
+  Dtype* ones_data = reinterpret_cast<Dtype>(ones<Dtype>(w).gpu_data());
+  caffe_gpu_gemv<Dtype>(Trans, h, w, a, X, ones_data, b, y);
+}
+
+// alpha row sum plus beta y
+template <typename Dtype>
+void caffe_cpu_arowsumpby(const CBLAS_TRANSPOSE Trans, const int h,
+			  const int w, const Dtype a, const Dtype* X,
+			  const Dtype b, Dtype* y) {
+  Dtype* ones_data = reinterpret_cast<Dtype>(ones<Dtype>(h).cpu_data());
+  caffe_cpu_gemv<Dtype>(Trans == CblasNoTrans ? CblasTrans : CblasNoTrans,
+			w, h, a, X, ones_data, b, y);
+}
+
+template <typename Dtype>
+void caffe_gpu_arowsumpby(const CBLAS_TRANSPOSE Trans, const int h,
+			  const int w, const Dtype a, const Dtype* X,
+			  const Dtype b, Dtype* y) {
+  Dtype* ones_data = reinterpret_cast<Dtype>(ones<Dtype>(h).gpu_data());
+  caffe_gpu_gemv<Dtype>(Trans == CblasNoTrans ? CblasTrans : CblasNoTrans,
+			w, h, a, X, ones_data, b, y);
+}
+
+// alpha vector plus beta matrix
+template <typename Dtype>
+void caffe_cpu_avpbm(const CBLAS_TRANSPOSE Trans, const int vh, const int vw,
+		     const int h, const int w, const Dtype a, const Dtype* v,
+		     const Dtype b, Dtype* X) {
+  CHECK((vh != 1 && vw == 1 && vh == h) || (vh == 1 && vw != 1 && vw == w));
+  if (vw == 1) {
+    Dtype* ones_data = reinterpret_cast<Dtype>(ones<Dtype>(w).cpu_data());
+    caffe_cpu_gemm<Dtype>(CblasNoTrans, CblasNoTrans, h, w, 1, a, v, ones_data,
+			  b, X);
+  } else {
+    Dtype* ones_data = reinterpret_cast<Dtype>(ones<Dtype>(h).cpu_data());
+    caffe_cpu_gemm<Dtype>(CblasNoTrans, CblasNoTrans, h, w, 1, a, ones_data, v,
+			  b, X);
+  }
+}
+
+template <typename Dtype>
+void caffe_gpu_avpbm(const CBLAS_TRANSPOSE Trans, const int vh, const int vw,
+		     const int h, const int w, const Dtype a, const Dtype* v,
+		     const Dtype b, Dtype* X) {
+  CHECK((vh != 1 && vw == 1 && vh == h) || (vh == 1 && vw != 1 && vw == w));
+  if (vw == 1) {
+    Dtype* ones_data = reinterpret_cast<Dtype>(ones<Dtype>(w).gpu_data());
+    caffe_gpu_gemm<Dtype>(CblasNoTrans, CblasNoTrans, h, w, 1, a, v, ones_data,
+			  b, X);
+  } else {
+    Dtype* ones_data = reinterpret_cast<Dtype>(ones<Dtype>(h).gpu_data());
+    caffe_gpu_gemm<Dtype>(CblasNoTrans, CblasNoTrans, h, w, 1, a, ones_data, v,
+			  b, X);
+ }
 }
 
 }  // namespace caffe

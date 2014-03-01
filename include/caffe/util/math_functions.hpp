@@ -5,6 +5,9 @@
 
 #include <mkl.h>
 #include <cublas_v2.h>
+#include <map>
+
+using std::map
 
 namespace caffe {
 
@@ -99,6 +102,27 @@ Dtype caffe_cpu_dot(const int n, const Dtype* x, const Dtype* y);
 
 template <typename Dtype>
 void caffe_gpu_dot(const int n, const Dtype* x, const Dtype* y, Dtype* out);
+
+// alpha column sum plus beta y
+template <typename Dtype>
+void caffe_cpu_acolsumpby(const CBLAS_TRANSPOSE Trans, const int h, const int w, const Dtype a, const Dtype* X, const Dtype b, Dtype* y);
+
+template <typename Dtype>
+void caffe_gpu_acolsumpby(const CBLAS_TRANSPOSE Trans, const int h, const int w, const Dtype a, const Dtype* X, const Dtype b, Dtype* y);
+
+// alpha row sum plus beta y
+template <typename Dtype>
+void caffe_cpu_arowsumpby(const CBLAS_TRANSPOSE Trans, const int h, const int w, const Dtype a, const Dtype* X, const Dtype b, Dtype* y);
+
+template <typename Dtype>
+void caffe_gpu_arowsumpby(const CBLAS_TRANSPOSE Trans, const int h, const int w, const Dtype a, const Dtype* X, const Dtype b, Dtype* y);
+
+// alpha vector plus beta matrix
+template <typename Dtype>
+void caffe_cpu_avpbm(const CBLAS_TRANSPOSE Trans, const int vh, const int vw, const Dtype* v, const int h, const int w, Dtype* X);
+
+template <typename Dtype>
+void caffe_gpu_avpbm(const CBLAS_TRANSPOSE Trans, const int vh, const int vw, const Dtype* v, const int h, const int w, Dtype* X);
 
 }  // namespace caffe
 
