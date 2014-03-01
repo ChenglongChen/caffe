@@ -124,6 +124,8 @@ class DropoutLayer : public NeuronLayer<Dtype> {
   float threshold_;
   float scale_;
   unsigned int uint_thres_;
+  bool mean_on_test_;
+  bool mean_on_train_;
 };
 
 

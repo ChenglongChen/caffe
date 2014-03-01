@@ -91,6 +91,10 @@ message LayerParameter {
   // point would be set as rand_skip * rand(0,1). Note that rand_skip should not
   // be larger than the number of keys in the leveldb.
   optional uint32 rand_skip = 53 [ default = 0 ];
+  // mean on train and mean on test for dropout layer
+  // which is for debuging purpose
+  optional bool mean_on_test = 54 [default = true];
+  optional bool mean_on_train = 55 [default = false];
 
   // Concat Layer need to specify the dimension along the concat will happen, 
   // the other dimensions must be the same for all the bottom blobs
